@@ -11,6 +11,11 @@ class ChatConsumer(WebsocketConsumer):
     other words, if I opened a second browser and typed in a message, the
     message would NOT appear in the 1st browser, even though I'm in the same
     chat room.
+
+    In order to let them be able to communicate, we need a 'channel layer'.
+    It allows multiple consumer instances to talk with each other, and with
+    other pats of Django.
+
     """
     def connect(self):
         self.accept()
