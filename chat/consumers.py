@@ -1,10 +1,9 @@
-from channels.generic.websocket import WebsocketConsumer
-from asgiref.sync import async_to_sync
+from channels.generic.websocket import AsyncWebsocketConsumer
 
 import json
 
 
-class ChatConsumer(WebsocketConsumer):
+class ChatConsumer(AsyncWebsocketConsumer):
     """
     A synchronous WebSocket consumer that accepts all connections, receives
     messages from its client, and echoes those message back to the same client.
@@ -24,10 +23,11 @@ class ChatConsumer(WebsocketConsumer):
 
     Why use `async_to_sync`?
     > All channel layer methods are ASYNCHRONOUS, whereas the ChatConsumer is
-      a synchronous one.
+      a synchronous one. Also, we no longer need this after we've rewritten
+      this fully asynchronous.
     """
 
-    def connect(self):
+    async def connect(self):
         # Obtain the 'room_name' from 'chat/routing.py'
         self.room_name = self.scope["url_route"]["kwargs"]["room_name"]
 
@@ -35,19 +35,19 @@ class ChatConsumer(WebsocketConsumer):
         self.room_group_name = f"chat_{self.room_name}"
 
         # Join room group
-        async_to_sync(self.channel_layer.group_add)(
+        await self.channel_layer.group_add(
             self.room_group_name, self.channel_name
         )
 
-        self.accept()
+        await self.accept()
 
-    def disconnect(self, close_code):
+    async def disconnect(self, close_code):
         # Leave room group
-        async_to_sync(self.channel_layer.group_discard)(
+        await self.channel_layer.group_discard(
             self.room_group_name, self.channel_name
         )
 
-    def receive(self, text_data):
+    async def receive(self, text_data):
         """
         Receive message from WebSocket.
         """
@@ -55,15 +55,15 @@ class ChatConsumer(WebsocketConsumer):
         message = text_data_json["message"]
 
         # Send message to room group
-        async_to_sync(self.channel_layer.group_send)(
+        await self.channel_layer.group_send(
             self.room_group_name, {"type": "chat_message", "message": message}
         )
 
-    def chat_message(self, event):
+    async def chat_message(self, event):
         """
         Receive message from room group.
         """
         message = event["message"]
 
         # Send message to WebSocket
-        self.send(text_data=json.dumps({"message": message}))
+        await self.send(text_data=json.dumps({"message": message}))
